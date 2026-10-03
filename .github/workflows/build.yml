@@ -1,0 +1,50 @@
+# `make ci` is the whole gate for this repo, so the runner runs the same steps:
+# the bundle resolves against the stock stack, carries no build paths, and packages.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# The jobs only read the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same list as `make deps`, plus dpkg-dev for dpkg-shlibdeps and binutils for
+      # strip, less shellcheck, which the runner image already has for `make lint`.
+      - name: C libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build gperf g++-14 dpkg-dev binutils \
+            libgtk-4-dev libglib2.0-dev liblz4-dev libsystemd-dev libdrm-dev \
+            libgnutls28-dev libicu-dev libpcre2-dev libfribidi-dev
+
+      # `make vte` fetches and builds VTE; the staged result only changes when VERSION or
+      # the patches do, so it is cached against both.
+      - name: VTE version
+        id: vte
+        run: echo "v=$(sed -n 's/^VERSION *= *//p' Makefile)-${{ hashFiles('patches/*.patch') }}" >> "$GITHUB_OUTPUT"
+
+      - name: cache the bundle
+        id: vte-cache
+        uses: actions/cache@v4
+        with:
+          path: build/vte/stage
+          key: vte-${{ steps.vte.outputs.v }}-${{ hashFiles('patches/*.patch') }}-${{ runner.os }}
+
+      - name: build VTE
+        if: steps.vte-cache.outputs.cache-hit != 'true'
+        run: make vte
+
+      - name: ci
+        run: make ci

@@ -1,0 +1,21 @@
+Package: amber-vte
+Version: @VERSION@
+Architecture: amd64
+Maintainer: Andre Bremer <hyperquader@gmail.com>
+Installed-Size: @SIZE@
+Depends: @DEPS@, amber-gtk4 (>= @GTK_MIN@)
+Section: libs
+Priority: optional
+Homepage: https://github.com/Hyperquader-Coders/amber-vte
+Description: VTE terminal widget runtime bundle for the amber suite
+ One VTE build shared by the amber applications, installed to
+ /usr/lib/amber-vte and reached only through those applications'
+ RUNPATH. It is deliberately not on the ldconfig path, so installing it
+ cannot change what anything else on the system links against.
+ .
+ It exists because kat800's terminal needs the termprop API and the UUID
+ functions that arrived in VTE 0.78, and Linux Mint ships 0.76. It carries
+ the downstream patches in patches/ of the source package.
+ .
+ This is a runtime bundle, not a development package. Build against the
+ distro's libvte-2.91-gtk4-dev.

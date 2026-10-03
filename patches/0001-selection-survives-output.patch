@@ -1,0 +1,42 @@
+Selection survives unrelated child output during and after a drag.
+
+VTE pauses PTY reads in start_selection() but Terminal::process() re-arms them
+on every tick, and its "deselect if the text under the selection changed"
+check compares against the PRIMARY snapshot, which mid-drag is the previous
+selection. Under a program that redraws continuously (a spinner rewriting one
+line every 32 ms) every mouse selection is cancelled before release, nothing is
+copied, and the clipboard silently keeps its earlier content.
+
+Upstream: https://gitlab.gnome.org/GNOME/vte/-/issues/2726
+          https://gitlab.gnome.org/GNOME/vte/-/issues/2960
+
+--- a/src/vte.cc
++++ b/src/vte.cc
+@@ -4051,8 +4051,12 @@
+                         scroll_to_bottom();
+                 }
+                 /* Deselect the current selection if its contents are changed
+-                 * by this insertion. */
+-                if (!m_selection_resolved.empty()) {
++                 * by this insertion. The reference is the PRIMARY snapshot,
++                 * which is taken at button release: while a drag is still in
++                 * progress it holds the previous selection (or nothing), so
++                 * the comparison is meaningless and would end the drag on the
++                 * first byte of unrelated output. */
++                if (!m_selecting && !m_selection_resolved.empty()) {
+                         //FIXMEchpe: this is atrocious
+                         auto selection = g_string_new(nullptr);
+                         get_selected_text(selection);
+@@ -11097,7 +11101,11 @@
+                     m_pty_input_source == 0) {
+                         m_pty_input_active = false;
+                 }
+-                connect_pty_read();
++                /* start_selection() paused reading the PTY for the duration
++                 * of the drag; re-arming it here would resume the child's
++                 * output under the pointer. maybe_end_selection() reconnects. */
++                if (!m_selecting)
++                        connect_pty_read();
+         }
+ 
+         bool is_active = !m_incoming_queue.empty();
