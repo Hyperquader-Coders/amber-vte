@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Assert the -dev package's .pc file points inside the bundle: libdir is the bundle's directory
+# and includedir its include/ folder, so a program that builds against it compiles with the
+# bundle's headers and links the bundle's library, never Mint's.
+#
+# pkg-config reads a file's Requires before it answers for a variable: vte-2.91-gtk4 requires
+# gtk4, which amber-vte-dev takes from amber-gtk4-dev. The caller names a GTK 4.16 pkg-config
+# directory in PKG_CONFIG_PATH (the Makefile passes amber-gtk4's stage). The file must require
+# gtk4 at the floor given, the GTK the library was compiled against, and the gtk4 found there
+# must meet it: meson writes VTE's own floor, 4.14, which Mint's GTK would satisfy.
+#
+#   PKG_CONFIG_PATH=<gtk4-pc-dir> scripts/check-pc build/deb/amber-vte-dev/usr/lib/amber-vte/pkgconfig /usr/lib/amber-vte 4.16.13
+set -uo pipefail
+
+DIR=${1:?usage: check-pc <pkgconfig-dir> <install-dir> <gtk-min>}
+INSTALL_DIR=${2:?usage: check-pc <pkgconfig-dir> <install-dir> <gtk-min>}
+GTK_MIN=${3:?usage: check-pc <pkgconfig-dir> <install-dir> <gtk-min>}
+export PKG_CONFIG_PATH=$DIR${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
+
+fail=0
+f=$DIR/vte-2.91-gtk4.pc
+[ -e "$f" ] || {
+	echo "PC: vte-2.91-gtk4.pc is missing from $DIR"
+	exit 1
+}
+grep -qx "prefix=/usr" "$f" || {
+	echo "PC: vte-2.91-gtk4.pc has no bare prefix=/usr line"
+	fail=1
+}
+for var in libdir includedir; do
+	have=$(pkg-config --define-variable=prefix=/usr --variable="$var" "$f")
+	want=$INSTALL_DIR
+	[ "$var" = includedir ] && want=$INSTALL_DIR/include
+	[ "$have" = "$want" ] || {
+		echo "PC: vte-2.91-gtk4.pc has $var=$have, not $want"
+		fail=1
+	}
+done
+
+grep -Eq "^Requires:.*\bgtk4 >= ${GTK_MIN//./\\.}(,|$)" "$f" || {
+	echo "PC: vte-2.91-gtk4.pc does not require gtk4 >= $GTK_MIN: $(grep '^Requires:' "$f")"
+	fail=1
+}
+gtk=$(pkg-config --modversion gtk4 2>/dev/null) || gtk=none
+pkg-config --atleast-version="$GTK_MIN" gtk4 2>/dev/null || {
+	echo "PC: the gtk4 the .pc file requires resolves to GTK $gtk, not $GTK_MIN (PKG_CONFIG_PATH=$PKG_CONFIG_PATH)"
+	fail=1
+}
+
+[ "$fail" -eq 0 ] || exit 1
+echo "pc OK: vte-2.91-gtk4.pc, libdir $INSTALL_DIR, includedir $INSTALL_DIR/include, requires gtk4 >= $GTK_MIN, gtk4 $gtk"
