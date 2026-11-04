@@ -1,0 +1,52 @@
+Source: amber-vte
+Section: libs
+Priority: optional
+Maintainer: Andre Bremer <hyperquader@gmail.com>
+Build-Depends: binutils,
+               curl,
+               dpkg-dev,
+               g++-14,
+               gcc-14,
+               gperf,
+               libdrm-dev,
+               libfribidi-dev,
+               libglib2.0-dev,
+               libgnutls28-dev,
+               libicu-dev,
+               liblz4-dev,
+               libpcre2-dev,
+               libsystemd-dev,
+               meson,
+               ninja-build,
+               libgtk-4-1 <!nocheck>,
+               lintian <!nocheck>,
+               shellcheck <!nocheck>,
+               shfmt <!nocheck>
+Homepage: https://github.com/Hyperquader-Coders/amber-vte
+
+Package: amber-vte
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, amber-gtk4 (>= 4.16.13)
+Description: VTE terminal widget runtime bundle for the amber suite
+ One VTE build shared by the amber applications, installed to
+ /usr/lib/amber-vte and reached only through those applications'
+ RUNPATH. It is deliberately not on the ldconfig path, so installing it
+ cannot change what anything else on the system links against.
+ .
+ It exists because kat800's terminal needs the termprop API and the UUID
+ functions that arrived in VTE 0.78, and Linux Mint ships 0.76. It carries
+ the downstream patches in patches/ of the source package.
+
+Package: amber-vte-dev
+Section: libdevel
+Architecture: amd64
+Depends: amber-vte (= ${binary:Version}), amber-gtk4-dev (>= 4.16.13), libglib2.0-dev, libpango1.0-dev, libcairo2-dev
+Description: VTE development files for the amber suite's bundle
+ The headers, pkg-config file and unversioned library link of the
+ amber-vte bundle, all under /usr/lib/amber-vte, so they never meet the
+ distro's libvte-2.91-gtk4-dev. The suite's Odin binding is generated
+ from these headers.
+ .
+ Build with PKG_CONFIG_PATH set to
+ /usr/lib/amber-vte/pkgconfig:/usr/lib/amber-gtk4/pkgconfig, and give the
+ program the RUNPATH /usr/lib/amber-vte:/usr/lib/amber-gtk4.

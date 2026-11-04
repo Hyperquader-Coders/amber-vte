@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: vte
+Source: https://download.gnome.org/sources/vte/
+
+Files: *
+Copyright: 2001-2025 Red Hat, Inc., Christian Persch and the VTE contributors
+License: LGPL-3.0-or-later
+Comment: Most of VTE is LGPL-3.0-or-later; some source files are GPL-3.0-or-later and some
+ are copied from elsewhere under compatible licences. Corresponding source for this build:
+ the release tarball https://download.gnome.org/sources/vte/0.84/vte-0.84.1.tar.xz plus the
+ patches in patches/ of the amber-vte source package. The library is shipped as a separate,
+ dynamically linked .so under the private path /usr/lib/amber-vte/, so the LGPL's
+ shared-library terms apply.
+
+Files: Makefile scripts/* packaging/* patches/*
+Copyright: 2025 Andre Bremer <hyperquader@gmail.com>, https://hyperquader.com
+License: LGPL-3.0-or-later
+
+License: LGPL-3.0-or-later
+ On Debian systems the complete text of the GNU Lesser General Public License version 3
+ can be found in /usr/share/common-licenses/LGPL-3, and of the GNU General Public License
+ version 3 in /usr/share/common-licenses/GPL-3.

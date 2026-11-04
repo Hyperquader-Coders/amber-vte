@@ -1,0 +1,71 @@
+# `make ci` is the gate for a push: the bundle resolves against the stock stack, carries no
+# build paths, and packages; lintian reads both packages; the shell scripts, the changelog and
+# the agent-file guard check out. It builds VTE each run, a few minutes: a fresh checkout's
+# patches are newer than any cached build, which make would unpack and build again. VTE
+# compiles against amber-gtk4's GTK 4.16, so amber-gtk4 is cloned as a sibling and its stage
+# built and cached first.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# The job only reads the repository.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    # A run that misses the GTK cache builds GTK, then VTE.
+    timeout-minutes: 45
+    # The desk's layout: each root project.toml's siblings use, under the desk's name, in the
+    # folder above the workspace.
+    env:
+      AMBER_ROOT: ${{ github.workspace }}/../amber
+    steps:
+      - uses: actions/checkout@v5
+
+      # project.toml is the one list; amber-gtk4 is public and needs no token.
+      - name: siblings
+        run: make init-siblings
+
+      # The packages are project.toml's, with amber-gtk4's, which its GTK build needs.
+      - name: system packages
+        run: sudo apt-get update && make init-packages APT_FLAGS=-y
+
+      # actions/cache takes no path with a `..` in it, and AMBER_ROOT has one, so the GTK
+      # stage's cache path is under this resolved copy of it.
+      - name: Amber root
+        id: root
+        run: echo "amber=$(realpath -m "$AMBER_ROOT")" >> "$GITHUB_OUTPUT"
+
+      # `make build` in amber-gtk4 builds the stage VTE compiles against. It changes only with
+      # amber-gtk4's project.toml (its [bundle] version and options), its patches or its
+      # house/bundle.mk, so it is cached against all three; amber-gtk4 is beside the workspace,
+      # where hashFiles does not reach, so the key hashes them here.
+      - name: GTK version
+        id: gtk
+        run: |
+          gtk="$AMBER_ROOT/amber-gtk4"
+          v=$(sed -n '/^\[bundle\]$/,/^\[/s/^version = "\(.*\)"$/\1/p' "$gtk/project.toml")
+          h=$(cat "$gtk/project.toml" "$gtk/house/bundle.mk" "$gtk"/patches/*.patch | sha256sum | cut -c1-16)
+          echo "v=$v-$h" >> "$GITHUB_OUTPUT"
+
+      # The GTK stage is needed to build VTE and, in make ci, by check-pc, which resolves the
+      # packaged .pc file's gtk4 in it; so it is restored, and built on a miss, every run.
+      - name: cache the GTK stage
+        id: gtk-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.root.outputs.amber }}/amber-gtk4/build/stage
+          key: gtk-${{ steps.gtk.outputs.v }}-${{ runner.os }}
+
+      - name: build GTK
+        if: steps.gtk-cache.outputs.cache-hit != 'true'
+        run: make -C "$AMBER_ROOT/amber-gtk4" build
+
+      - name: make ci
+        run: make ci

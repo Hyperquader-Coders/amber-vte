@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Raise the staged .pc file's gtk4 floor to the GTK the library is compiled against.
+#
+# meson writes the floor VTE's own meson.build asks for, 4.14, which Mint's GTK would meet; the
+# library is built against amber-gtk4's 4.16, so its .pc file requires that (GTK_BUNDLE_MIN, which
+# the Makefile sets). scripts/check-pc checks the result.
+#
+#   GTK_BUNDLE_MIN=4.16.13 scripts/after-stage build/stage /usr/lib/amber-vte
+set -euo pipefail
+
+STAGE=${1:?usage: after-stage <stage> <install-dir>}
+INSTALL_DIR=${2:?usage: after-stage <stage> <install-dir>}
+GTK_MIN=${GTK_BUNDLE_MIN:?GTK_BUNDLE_MIN is not set: the GTK the library is compiled against}
+
+pc=$STAGE$INSTALL_DIR/pkgconfig/vte-2.91-gtk4.pc
+[ -e "$pc" ] || {
+	echo "after-stage: $pc is missing" >&2
+	exit 1
+}
+sed -i -E "s/(^Requires:.*\bgtk4) >= [0-9.]+/\1 >= $GTK_MIN/" "$pc"
+echo "after-stage: $(grep '^Requires:' "$pc")"

@@ -1,0 +1,6 @@
+# The library's RUNPATH names the amber-gtk4 bundle on purpose, so it loads the bundled GTK
+# and not the distro's older one whenever amber-gtk4 is installed.
+amber-vte: custom-library-search-path RUNPATH /usr/lib/amber-gtk4 [usr/lib/amber-vte/libvte-2.91-gtk4.so.0]
+
+# Not a Debian upload; there is no bug tracker entry to close.
+amber-vte: initial-upload-closes-no-bugs

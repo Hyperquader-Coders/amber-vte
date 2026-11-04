@@ -1,0 +1,70 @@
+# What amber-vte is and needs: build is what the bundle's build needs, test what only its checks
+# need. house-rules docs/PROJECT_TOML.md has the layout.
+[project]
+schema = "amber-project-1"
+name = "amber-vte"
+kind = "bundle"
+summary = "VTE 0.84 runtime bundle for the Amber Linux applications"
+tags = [
+  "ai-assisted",
+  "amber",
+  "amberlinux",
+  "debian-packaging",
+  "linux-mint",
+  "vte",
+]
+license = "LGPL-3.0-or-later"
+
+[siblings.AMBER_ROOT]
+# Its staged build holds the GTK 4.16 headers VTE compiles against.
+amber-gtk4 = "https://github.com/Hyperquader-Coders/amber-gtk4"
+
+[build]
+# curl fetches the release; g++-14 builds VTE 0.84, which is C++20.
+packages = [
+  "meson",
+  "ninja-build",
+  "gperf",
+  "gcc-14",
+  "g++-14",
+  "curl",
+  "dpkg-dev",
+  "binutils",
+  "libglib2.0-dev",
+  "liblz4-dev",
+  "libsystemd-dev",
+  "libdrm-dev",
+  "libgnutls28-dev",
+  "libicu-dev",
+  "libpcre2-dev",
+  "libfribidi-dev",
+]
+
+[test]
+# libgtk-4-1 is the stock GTK check-no-cascade resolves the library against where amber-gtk4 is
+# not installed.
+packages = [
+  "libgtk-4-1",
+  "shellcheck",
+  "shfmt",
+  "lintian",
+]
+
+[bundle]
+version = "0.84.1"
+source = "https://download.gnome.org/sources/vte/0.84/vte-0.84.1.tar.xz"
+sha256 = "aca1caa8478aebcdbb1d67897fb3511eb7601debae6810e16a15b6fa25f31ac8"
+build-system = "meson"
+# gtk4 only, no bindings, docs or app; the link names amber-gtk4's bundle, so the library finds
+# its GTK without the program's help.
+options = [
+  "gtk3=false",
+  "gtk4=true",
+  "vapi=false",
+  "gir=false",
+  "docs=false",
+  "glade=false",
+  "app=false",
+  "c_link_args=-Wl,-rpath,/usr/lib/amber-gtk4",
+  "cpp_link_args=-Wl,-rpath,/usr/lib/amber-gtk4",
+]
